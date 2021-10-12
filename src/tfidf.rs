@@ -1,7 +1,8 @@
 use std::collections::HashMap;
 use std::fs::File;
+use std::io::Read;
 use std::mem;
-
+use serde_json;
 use super::*;
 
 #[derive(Clone)]
@@ -23,6 +24,18 @@ impl TFIDF {
     pub fn load_from(&mut self, pd_file_name: String, fd_file_name: String) -> Result<()> {
         let pd_file_handler = File::open(pd_file_name)?;
         let fd_file_handler = File::open(fd_file_name)?;
+
+        let mut pd:PersistentData = serde_json::from_reader(pd_file_handler)?;
+        let mut fd:PersistentData = serde_json::from_reader(fd_file_handler)?;
+        self.pb.doc_count = fd.doc_count;
+        self.pb.word_count = fd.word_count;
+
+        self.pb.docs = Vec::with_capacity(pd.docs.len());
+        self.pb.words = Vec::with_capacity(pd.words.len());
+
+        for (index, value) in pb.docs.enumerate() {
+
+        }
 
         Ok(())
     }
