@@ -1,5 +1,8 @@
 use std::collections::HashMap;
+use std::fs::File;
 use std::mem;
+
+use super::*;
 
 #[derive(Clone)]
 struct TFIDF {
@@ -8,18 +11,51 @@ struct TFIDF {
     dm: Box<DocMap>,
 }
 
-#[derive(Clone)]
+impl TFIDF {
+    pub fn new() -> TFIDF {
+        TFIDF {
+            pb: PersistentData::default(),
+            wm: Box::new(WordMap::new()),
+            dm: Box::new(DocMap::new()),
+        }
+    }
+
+    pub fn load_from(&mut self, pd_file_name: String, fd_file_name: String) -> Result<()> {
+        let pd_file_handler = File::open(pd_file_name)?;
+        let fd_file_handler = File::open(fd_file_name)?;
+
+        Ok(())
+    }
+}
+
+#[derive(Clone, Default, Debug, Serialize, Deserialize)]
 struct PersistentData {
     updated: bool,
 
-    doc_count: i64,
-    word_count: i64,
+    doc_count: usize,
+    word_count: usize,
 
     docs: Vec<Doc>,
     words: Vec<String>,
 }
 
-#[derive(Clone)]
+impl PersistentData {
+    pub fn append_word(&mut self, s: String) -> usize {
+        self.words.push(s);
+        self.updated = true;
+        self.word_count = self.words.len();
+        self.word_count - 1
+    }
+
+    pub fn append_doc(&mut self, doc: Doc) -> usize {
+        self.docs.push(doc);
+        self.updated = true;
+        self.doc_count = self.docs.len();
+        self.doc_count - 1
+    }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
 struct Doc {
     id: String,
     words: Vec<String>,
@@ -31,6 +67,10 @@ struct WordMap {
 }
 
 impl WordMap {
+    pub fn new() -> WordMap {
+        WordMap { m: HashMap::new() }
+    }
+
     pub fn set_word(&mut self, w: Word) {
         self.m.insert(w.value.clone(), Box::new(Some(w)));
     }
@@ -54,12 +94,20 @@ struct Word {
 }
 
 impl Word {
-    pub fn get_index(&self) -> int {
+    pub fn get_index(&self) -> i64 {
         self.index
     }
 
     pub fn add_doc(&mut self, doc_id: String) {
-        // self.doc_set.as_ref()
+        self.doc_set.append(doc_id)
+    }
+
+    pub fn del_doc(&mut self, doc_id: String) {
+        self.doc_set.del(doc_id)
+    }
+
+    pub fn doc_count(&self) -> usize {
+        self.doc_set.count()
     }
 }
 
@@ -83,6 +131,10 @@ impl DocSet {
             None => false,
         }
     }
+
+    pub fn count(&self) -> usize {
+        self.m.len()
+    }
 }
 
 #[derive(Clone)]
@@ -91,6 +143,10 @@ struct DocMap {
 }
 
 impl DocMap {
+    pub fn new() -> DocMap {
+        DocMap { m: HashMap::new() }
+    }
+
     pub fn set_doc(&mut self, d: Doc) {
         self.m.insert(d.id.clone(), Box::new(Some(d)));
     }
@@ -101,7 +157,7 @@ impl DocMap {
                 let p = r.as_ref().clone();
                 p
             }
-            None => None
+            None => None,
         }
     }
 }
