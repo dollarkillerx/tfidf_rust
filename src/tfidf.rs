@@ -1,9 +1,11 @@
-use super::*;
-use serde_json;
 use std::collections::HashMap;
 use std::fs::File;
-use std::io::Read;
+use std::io::{Read, Write};
 use std::mem;
+
+use serde_json;
+
+use super::*;
 
 #[derive(Clone)]
 struct TFIDF {
@@ -67,6 +69,57 @@ impl TFIDF {
                 }
             }
         }
+    }
+
+    pub fn save(&self, pd_file_name: String, fd_file_name: String) -> Result<()> {
+        let pd = PersistentData {
+            updated: false,
+            doc_count: self.pd.docs.len(),
+            word_count: self.pd.words.len(),
+            docs: self.pd.docs.clone(),
+            words: self.pd.words.clone(),
+        };
+
+        let mut fd = PersistentData::default();
+        fd.doc_count = self.pd.docs.len();
+        fd.word_count = self.pd.words.len();
+
+        let pd = serde_json::to_string(&pd)?;
+        let fd = serde_json::to_string(&fd)?;
+
+        let mut pd_file = File::create(pd_file_name)?;
+        pd_file.write_all(pd.as_bytes())?;
+
+        let mut fd_file = File::create(fd_file_name)?;
+        fd_file.write_all(fd.as_bytes())?;
+
+        Ok(())
+    }
+
+    pub fn doc_count(&self) -> usize {
+        self.pd.docs.len()
+    }
+
+    pub fn word_count(&self) -> usize {
+        self.pd.words.len()
+    }
+
+    pub fn tf(&self, doc: Doc, word: String) -> f64 {
+        let mut count: f64 = 0.0;
+
+        for v in doc.words.iter() {
+            if word.eq(v) {
+                count += 1.0;
+            }
+        }
+
+        count / doc.words.len() as f64
+    }
+
+    pub fn tf_vector(&self, doc: Doc) -> Vec<f64> {
+        let result = Vec::new();
+
+        result
     }
 }
 
