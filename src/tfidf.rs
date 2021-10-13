@@ -117,10 +117,26 @@ impl TFIDF {
     }
 
     pub fn tf_vector(&self, doc: Doc) -> Vec<f64> {
-        let result = Vec::new();
+        let mut count_map: HashMap<String, usize> = HashMap::new();
+        let mut result = Vec::new();
+        for i in doc.words.iter() {
+            match count_map.get(i) {
+                Some(r) => {
+                    count_map.insert(i.clone(), r + 1);
+                }
+                None => {
+                    count_map.insert(i.clone(), 1);
+                }
+            }
+        }
 
+        for i in doc.words.iter() {
+            result.push(count_map.get(i).unwrap().clone() as f64 / doc.words.len() as f64)
+        }
         result
     }
+
+    pub fn idf(&self, w: String) -> f64 {}
 }
 
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
