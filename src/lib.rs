@@ -1,3 +1,5 @@
+#![feature(int_log)]
+
 mod tfidf;
 
 pub use serde::{Deserialize, Serialize};

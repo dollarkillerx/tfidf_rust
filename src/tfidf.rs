@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 use std::fs::File;
-use std::io::{Read, Write};
-use std::mem;
+use std::io::Write;
 
 use serde_json;
 
@@ -136,7 +135,79 @@ impl TFIDF {
         result
     }
 
-    pub fn idf(&self, w: String) -> f64 {}
+    pub fn idf(&self, w: String) -> Option<f64> {
+        if let None = self.wm.get_word(w.clone()) {
+            return None;
+        }
+
+        return Some(
+            self.doc_count().log2() as f64 / self.wm.get_word(w).unwrap().doc_count() as f64 + 1.0,
+        );
+    }
+
+    pub fn idf_vector(&self, doc: Doc) -> Option<Vec<f64>> {
+        let mut result = Vec::with_capacity(doc.words.len());
+        for i in doc.words.iter() {
+            match self.idf(i.clone()) {
+                Some(r) => {
+                    result.push(r);
+                }
+                None => {
+                    return None;
+                }
+            }
+        }
+
+        Some(result)
+    }
+
+    fn dot_product_in(&self, x: Vec<f64>, y: Vec<f64>) -> Vec<f64> {
+        let mut result = Vec::with_capacity(x.len());
+        for (k, v) in y.iter().enumerate() {
+            result.insert(k, x.get(k).unwrap() * v)
+        }
+        result
+    }
+
+    pub fn dot_product(&self, a: Vec<f64>, b: Vec<f64>) -> Vec<f64> {
+        if a.len() > b.len() {
+            return self.dot_product_in(a, b);
+        }
+        return self.dot_product_in(b, a);
+    }
+
+    pub fn upsert_docs(&mut self, docs: Vec<Doc>) {
+        for i in docs.iter() {}
+    }
+
+    pub fn upsert_doc(&mut self, doc: Doc) {
+        let pre_doc = self.dm.get_doc(doc.id.clone());
+        if let None = pre_doc {
+            let i = self.pd.append_doc(doc.clone());
+            self.dm.set_doc(self.pd.docs.get(i).unwrap().clone());
+            self.re_index_words(doc.clone());
+            return;
+        }
+
+        let (incr, decr) = pre_doc.wor
+    }
+
+    pub fn re_index_words(&mut self, doc: Doc) {
+        for i in doc.words.iter() {
+            let w = self.wm.get_word(i.clone());
+            if let None = w {
+                let mut p = DocSet::new();
+                p.append(doc.id.clone());
+                self.wm.set_word(Word {
+                    value: i.clone(),
+                    index: self.pd.append_word(i.clone()),
+                    doc_set: Box::new(p),
+                });
+                continue;
+            }
+            w.unwrap().doc_set.append(doc.id.clone());
+        }
+    }
 }
 
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
@@ -170,6 +241,12 @@ impl PersistentData {
 struct Doc {
     id: String,
     words: Vec<String>,
+}
+
+impl Doc {
+    pub fn words_diff(new_words: Vec<String>) -> (Vec<String>, Vec<String>) {
+        (new_words.clone(), new_words)
+    }
 }
 
 #[derive(Clone)]
