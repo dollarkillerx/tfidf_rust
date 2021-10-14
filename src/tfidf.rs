@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::io::Write;
 
@@ -244,8 +244,32 @@ struct Doc {
 }
 
 impl Doc {
-    pub fn words_diff(new_words: Vec<String>) -> (Vec<String>, Vec<String>) {
-        (new_words.clone(), new_words)
+    fn get(&self) {
+        self.words;
+    }
+
+    pub fn words_diff(&self, new_words: Vec<String>) -> (Vec<String>, Vec<String>) {
+        let mut incr_set = HashSet::new();
+        let mut decr_set = HashSet::new();
+
+        for i in self.words.iter() {
+            incr_set.insert(i.clone());
+            decr_set.insert(i.clone());
+        }
+
+        let mut incr = Vec::new();
+        let mut decr = Vec::new();
+
+        for i in new_words.iter() {
+            if !incr_set.contains(i) {
+                incr.push(i.clone());
+            }else {
+                decr_set.remove(i);
+            }
+        }
+
+        decr = decr_set.iter().cloned().collect();
+        (incr, decr)
     }
 }
 
