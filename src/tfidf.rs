@@ -6,6 +6,176 @@ use serde_json;
 
 use super::*;
 
+#[derive(Clone, Debug, Serialize, Deserialize)]
+struct WordTFIDF {
+    index: i64,
+    value: f64,
+}
+
+#[derive(Clone, Default, Debug, Serialize, Deserialize)]
+struct PersistentData {
+    updated: bool,
+
+    doc_count: usize,
+    word_count: usize,
+
+    docs: Vec<Doc>,
+    words: Vec<String>,
+}
+
+impl PersistentData {
+    pub fn append_word(&mut self, s: String) -> usize {
+        self.words.push(s);
+        self.updated = true;
+        self.word_count = self.words.len();
+        self.word_count - 1
+    }
+
+    pub fn append_doc(&mut self, doc: Doc) -> usize {
+        self.docs.push(doc);
+        self.updated = true;
+        self.doc_count = self.docs.len();
+        self.doc_count - 1
+    }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+struct Doc {
+    id: String,
+    words: Vec<String>,
+}
+
+impl Doc {
+    pub fn words_diff(&self, new_words: Vec<String>) -> (Vec<String>, Vec<String>) {
+        let mut incr_set = HashSet::new();
+        let mut decr_set = HashSet::new();
+
+        for i in self.words.iter() {
+            incr_set.insert(i.clone());
+            decr_set.insert(i.clone());
+        }
+
+        let mut incr = Vec::new();
+        let mut decr = Vec::new();
+
+        for i in new_words.iter() {
+            if !incr_set.contains(i) {
+                incr.push(i.clone());
+            } else {
+                decr_set.remove(i);
+            }
+        }
+
+        decr = decr_set.iter().cloned().collect();
+        (incr, decr)
+    }
+}
+
+#[derive(Clone)]
+struct WordMap {
+    m: HashMap<String, Box<Option<Word>>>,
+}
+
+impl WordMap {
+    pub fn new() -> WordMap {
+        WordMap { m: HashMap::new() }
+    }
+
+    pub fn set_word(&mut self, w: Word) {
+        self.m.insert(w.value.clone(), Box::new(Some(w)));
+    }
+
+    pub fn get_word(&self, s: String) -> Option<Word> {
+        match self.m.get(&s) {
+            Some(r) => {
+                let b = r.as_ref().clone();
+                b
+            }
+            None => None,
+        }
+    }
+}
+
+#[derive(Clone)]
+struct Word {
+    value: String,
+    index: usize,
+    doc_set: Box<DocSet>,
+}
+
+impl Word {
+    pub fn get_index(&self) -> usize {
+        self.index
+    }
+
+    pub fn add_doc(&mut self, doc_id: String) {
+        self.doc_set.append(doc_id)
+    }
+
+    pub fn del_doc(&mut self, doc_id: String) {
+        self.doc_set.del(doc_id)
+    }
+
+    pub fn doc_count(&self) -> usize {
+        self.doc_set.count()
+    }
+}
+
+#[derive(Clone)]
+struct DocSet {
+    m: HashMap<String, bool>,
+}
+
+impl DocSet {
+    pub fn new() -> DocSet {
+        DocSet { m: HashMap::new() }
+    }
+
+    pub fn append(&mut self, str: String) {
+        self.m.insert(str, true);
+    }
+
+    pub fn del(&mut self, str: String) {
+        self.m.remove(&str);
+    }
+
+    pub fn exits(&self, str: String) -> bool {
+        match self.m.get(&str) {
+            Some(_) => true,
+            None => false,
+        }
+    }
+
+    pub fn count(&self) -> usize {
+        self.m.len()
+    }
+}
+
+#[derive(Clone)]
+struct DocMap {
+    m: HashMap<String, Box<Option<Doc>>>,
+}
+
+impl DocMap {
+    pub fn new() -> DocMap {
+        DocMap { m: HashMap::new() }
+    }
+
+    pub fn set_doc(&mut self, d: Doc) {
+        self.m.insert(d.id.clone(), Box::new(Some(d)));
+    }
+
+    pub fn get_doc(&self, id: String) -> Option<Doc> {
+        match self.m.get(&id) {
+            Some(r) => {
+                let p = r.as_ref().clone();
+                p
+            }
+            None => None,
+        }
+    }
+}
+
 #[derive(Clone)]
 struct TFIDF {
     pd: PersistentData,
@@ -242,176 +412,6 @@ impl TFIDF {
                 continue;
             }
             w.unwrap().doc_set.append(doc.id.clone());
-        }
-    }
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-struct WordTFIDF {
-    index: i64,
-    value: f64,
-}
-
-#[derive(Clone, Default, Debug, Serialize, Deserialize)]
-struct PersistentData {
-    updated: bool,
-
-    doc_count: usize,
-    word_count: usize,
-
-    docs: Vec<Doc>,
-    words: Vec<String>,
-}
-
-impl PersistentData {
-    pub fn append_word(&mut self, s: String) -> usize {
-        self.words.push(s);
-        self.updated = true;
-        self.word_count = self.words.len();
-        self.word_count - 1
-    }
-
-    pub fn append_doc(&mut self, doc: Doc) -> usize {
-        self.docs.push(doc);
-        self.updated = true;
-        self.doc_count = self.docs.len();
-        self.doc_count - 1
-    }
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-struct Doc {
-    id: String,
-    words: Vec<String>,
-}
-
-impl Doc {
-    pub fn words_diff(&self, new_words: Vec<String>) -> (Vec<String>, Vec<String>) {
-        let mut incr_set = HashSet::new();
-        let mut decr_set = HashSet::new();
-
-        for i in self.words.iter() {
-            incr_set.insert(i.clone());
-            decr_set.insert(i.clone());
-        }
-
-        let mut incr = Vec::new();
-        let mut decr = Vec::new();
-
-        for i in new_words.iter() {
-            if !incr_set.contains(i) {
-                incr.push(i.clone());
-            } else {
-                decr_set.remove(i);
-            }
-        }
-
-        decr = decr_set.iter().cloned().collect();
-        (incr, decr)
-    }
-}
-
-#[derive(Clone)]
-struct WordMap {
-    m: HashMap<String, Box<Option<Word>>>,
-}
-
-impl WordMap {
-    pub fn new() -> WordMap {
-        WordMap { m: HashMap::new() }
-    }
-
-    pub fn set_word(&mut self, w: Word) {
-        self.m.insert(w.value.clone(), Box::new(Some(w)));
-    }
-
-    pub fn get_word(&self, s: String) -> Option<Word> {
-        match self.m.get(&s) {
-            Some(r) => {
-                let b = r.as_ref().clone();
-                b
-            }
-            None => None,
-        }
-    }
-}
-
-#[derive(Clone)]
-struct Word {
-    value: String,
-    index: usize,
-    doc_set: Box<DocSet>,
-}
-
-impl Word {
-    pub fn get_index(&self) -> usize {
-        self.index
-    }
-
-    pub fn add_doc(&mut self, doc_id: String) {
-        self.doc_set.append(doc_id)
-    }
-
-    pub fn del_doc(&mut self, doc_id: String) {
-        self.doc_set.del(doc_id)
-    }
-
-    pub fn doc_count(&self) -> usize {
-        self.doc_set.count()
-    }
-}
-
-#[derive(Clone)]
-struct DocSet {
-    m: HashMap<String, bool>,
-}
-
-impl DocSet {
-    pub fn new() -> DocSet {
-        DocSet { m: HashMap::new() }
-    }
-
-    pub fn append(&mut self, str: String) {
-        self.m.insert(str, true);
-    }
-
-    pub fn del(&mut self, str: String) {
-        self.m.remove(&str);
-    }
-
-    pub fn exits(&self, str: String) -> bool {
-        match self.m.get(&str) {
-            Some(_) => true,
-            None => false,
-        }
-    }
-
-    pub fn count(&self) -> usize {
-        self.m.len()
-    }
-}
-
-#[derive(Clone)]
-struct DocMap {
-    m: HashMap<String, Box<Option<Doc>>>,
-}
-
-impl DocMap {
-    pub fn new() -> DocMap {
-        DocMap { m: HashMap::new() }
-    }
-
-    pub fn set_doc(&mut self, d: Doc) {
-        self.m.insert(d.id.clone(), Box::new(Some(d)));
-    }
-
-    pub fn get_doc(&self, id: String) -> Option<Doc> {
-        match self.m.get(&id) {
-            Some(r) => {
-                let p = r.as_ref().clone();
-                p
-            }
-            None => None,
         }
     }
 }
