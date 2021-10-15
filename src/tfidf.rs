@@ -161,6 +161,23 @@ impl TFIDF {
         Some(result)
     }
 
+    pub fn get_doc_vector(&mut self, doc: Doc) -> Vec<WordTFIDF> {
+        self.upsert_docs(vec![doc.clone()]);
+
+        let mut result = Vec::with_capacity(doc.words.len());
+        let values = self.dot_product(
+            self.tf_vector(doc.clone()),
+            self.idf_vector(doc.clone()).unwrap(),
+        );
+        for (i, v) in doc.words.iter().enumerate() {
+            result.push(WordTFIDF {
+                index: self.wm.get_word(v.clone()).unwrap().get_index() as i64,
+                value: *values.get(i).unwrap(),
+            })
+        }
+        result
+    }
+
     fn dot_product_in(&self, x: Vec<f64>, y: Vec<f64>) -> Vec<f64> {
         let mut result = Vec::with_capacity(x.len());
         for (k, v) in y.iter().enumerate() {
@@ -177,7 +194,9 @@ impl TFIDF {
     }
 
     pub fn upsert_docs(&mut self, docs: Vec<Doc>) {
-        for i in docs.iter() {}
+        for i in docs.iter() {
+            self.upsert_doc(i.clone());
+        }
     }
 
     pub fn upsert_doc(&mut self, doc: Doc) {
@@ -189,7 +208,24 @@ impl TFIDF {
             return;
         }
 
-        let (incr, decr) = pre_doc.wor
+        let mut pre_doc = pre_doc.unwrap();
+        let (incr, decr) = pre_doc.words_diff(doc.words.clone());
+        if incr.len() > 0 {
+            self.re_index_words(doc.clone());
+        }
+        for i in decr.iter() {
+            let w = self.wm.get_word(i.clone());
+            if let None = w {
+                continue;
+            }
+            let mut w = w.unwrap();
+            w.del_doc(doc.id.clone());
+            self.wm.set_word(w)
+        }
+
+        pre_doc.words = doc.words.clone();
+        self.dm.set_doc(pre_doc);
+        self.pd.updated = true
     }
 
     pub fn re_index_words(&mut self, doc: Doc) {
@@ -208,6 +244,12 @@ impl TFIDF {
             w.unwrap().doc_set.append(doc.id.clone());
         }
     }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+struct WordTFIDF {
+    index: i64,
+    value: f64,
 }
 
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
@@ -244,10 +286,6 @@ struct Doc {
 }
 
 impl Doc {
-    fn get(&self) {
-        self.words;
-    }
-
     pub fn words_diff(&self, new_words: Vec<String>) -> (Vec<String>, Vec<String>) {
         let mut incr_set = HashSet::new();
         let mut decr_set = HashSet::new();
@@ -263,7 +301,7 @@ impl Doc {
         for i in new_words.iter() {
             if !incr_set.contains(i) {
                 incr.push(i.clone());
-            }else {
+            } else {
                 decr_set.remove(i);
             }
         }
