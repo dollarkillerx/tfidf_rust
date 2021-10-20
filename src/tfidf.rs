@@ -7,7 +7,7 @@ use serde_json;
 use super::*;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-struct WordTFIDF {
+pub struct WordTFIDF {
     index: i64,
     value: f64,
 }
@@ -40,7 +40,7 @@ impl PersistentData {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-struct Doc {
+pub struct Doc {
     id: String,
     words: Vec<String>,
 }
@@ -177,7 +177,7 @@ impl DocMap {
 }
 
 #[derive(Clone)]
-struct TFIDF {
+pub struct TFIDF {
     pd: PersistentData,
     wm: Box<WordMap>,
     dm: Box<DocMap>,
@@ -289,14 +289,19 @@ impl TFIDF {
         let mut count_map: HashMap<String, usize> = HashMap::new();
         let mut result = Vec::new();
         for i in doc.words.iter() {
-            match count_map.get(i) {
+            match count_map.get_mut(i) {
                 Some(r) => {
-                    count_map.insert(i.clone(), r + 1);
+                    (*r) += 1
                 }
                 None => {
                     count_map.insert(i.clone(), 1);
                 }
             }
+            // if let Some(r) = count_map.get_mut(i) {
+            //    (*r) += 1;
+            // }else {
+            //     count_map.insert(i.clone(), 1);
+            // }
         }
 
         for i in doc.words.iter() {

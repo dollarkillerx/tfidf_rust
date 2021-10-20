@@ -1,9 +1,12 @@
 #![feature(int_log)]
 
-mod tfidf;
+pub mod tfidf;
 
 pub use serde::{Deserialize, Serialize};
 pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
+
+#[macro_use]
+extern crate lazy_static;
 
 #[cfg(test)]
 mod tests {
